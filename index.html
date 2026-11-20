@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en" data-host-mode="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Predictor 4.0</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;height:100%}
+  body{
+    --bg:#070b12; --panel:#0d1420; --line:#1b2536; --txt:#e8eef9;
+    --muted:#7d8da3; --neon:#16f29a; --cyan:#22d3ee;
+    background:
+      linear-gradient(rgba(34,211,238,.045) 1px,transparent 1px) 0 0/26px 26px,
+      linear-gradient(90deg,rgba(34,211,238,.045) 1px,transparent 1px) 0 0/26px 26px,
+      var(--bg);
+    color:var(--txt);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    display:flex;flex-direction:column;min-height:100vh;
+  }
+  .hdr{display:flex;align-items:center;gap:10px;padding:11px 14px;
+    border-bottom:1px solid var(--line);background:rgba(13,20,32,.9);position:sticky;top:0;z-index:5}
+  .ava{width:34px;height:34px;border-radius:50%;background:#0e2a22;border:1px solid var(--neon);
+    color:var(--neon);display:flex;align-items:center;justify-content:center;font-size:16px;
+    box-shadow:0 0 12px rgba(22,242,154,.35)}
+  .hinfo{flex:1;min-width:0}
+  .hname{font-size:14px;font-weight:600;color:#fff;letter-spacing:.3px}
+  .ver{font-size:10px;font-weight:400;color:var(--muted);border:1px solid var(--line);padding:0 5px;border-radius:4px;margin-left:4px}
+  .hsub{font-size:11px;color:var(--muted);margin-top:2px;display:flex;align-items:center;gap:5px}
+  .live{width:6px;height:6px;border-radius:50%;background:var(--neon);box-shadow:0 0 6px var(--neon);animation:pulse 1.6s infinite}
+  @keyframes pulse{50%{opacity:.3}}
+  .badge{font-size:9px;letter-spacing:1px;color:var(--neon);border:1px solid rgba(22,242,154,.4);border-radius:4px;padding:3px 6px}
+  .chat{flex:1;padding:14px 12px 4px;overflow-y:auto}
+  .msg{display:flex;margin-bottom:10px}
+  .msg.out{justify-content:flex-end}
+  .bubble{background:var(--panel);border:1px solid var(--line);color:var(--txt);padding:9px 12px;
+    border-radius:12px;font-size:13.5px;line-height:1.5;max-width:88%;white-space:pre-wrap}
+  .out .bubble{background:rgba(22,242,154,.1);border-color:rgba(22,242,154,.45);color:var(--neon);border-bottom-right-radius:4px}
+  .msg:not(.out) .bubble{border-bottom-left-radius:4px}
+  .kb{display:grid;gap:6px;margin:-4px 0 12px}
+  .kb.g2{grid-template-columns:1fr 1fr}
+  .kb.g3{grid-template-columns:1fr 1fr 1fr}
+  .kb button{font:inherit;font-size:12.5px;padding:11px 10px;border-radius:8px;cursor:pointer;
+    background:#111a27;color:var(--txt);border:1px solid var(--line);text-align:center;transition:.12s}
+  .kb button:active{border-color:var(--cyan);color:var(--cyan)}
+  .kb button.prim{background:var(--neon);color:#04140d;border-color:transparent;font-weight:600}
+  .kb button.wide{grid-column:1 / -1}
+  .bar{padding:10px 12px calc(10px + env(safe-area-inset-bottom));border-top:1px solid var(--line);
+    background:rgba(13,20,32,.95);position:sticky;bottom:0}
+  .startpill{width:100%;font:inherit;font-size:13px;font-weight:600;padding:12px;border-radius:8px;
+    border:none;cursor:pointer;background:var(--neon);color:#04140d;letter-spacing:.4px}
+  .mockinput{width:100%;display:flex;align-items:center;gap:8px;background:#0b131e;
+    border:1px solid var(--line);border-radius:20px;padding:9px 14px;font-size:12.5px;color:var(--muted)}
+  .mockinput span{flex:1}
+  .typing{display:flex;gap:4px;padding:12px 14px}
+  .dot{width:6px;height:6px;border-radius:50%;background:var(--neon);animation:bl 1s infinite}
+  .dot:nth-child(2){animation-delay:.15s}.dot:nth-child(3){animation-delay:.3s}
+  @keyframes bl{0%,60%,100%{opacity:.2}30%{opacity:1}}
+  .card{border:1px solid var(--line);border-radius:12px;overflow:hidden;max-width:92%;background:var(--panel);width:100%}
+  .card-top{padding:9px 14px;border-bottom:1px solid var(--line);font-size:11.5px;letter-spacing:.8px;
+    color:var(--muted);display:flex;justify-content:space-between}
+  .card-top.on{color:var(--neon)}
+  .track{position:relative;height:74px;margin:0 14px;overflow:hidden}
+  .track:before{content:"";position:absolute;inset:0;
+    background:repeating-linear-gradient(90deg,rgba(34,211,238,.1) 0 1px,transparent 1px 22px)}
+  .plane{position:absolute;left:0;bottom:8px;font-size:16px;filter:drop-shadow(0 0 6px rgba(22,242,154,.8))}
+  .trail{position:absolute;left:0;bottom:14px;height:2px;width:0;background:var(--neon);box-shadow:0 0 8px var(--neon)}
+  .mult{position:absolute;left:14px;top:6px;font-size:26px;font-weight:600;color:var(--neon);
+    font-variant-numeric:tabular-nums;text-shadow:0 0 18px rgba(22,242,154,.55)}
+  .row{display:flex;justify-content:space-between;gap:12px;padding:7px 14px;font-size:12.5px;
+    border-bottom:1px solid var(--line);opacity:0;transform:translateY(3px);transition:.25s}
+  .row.on{opacity:1;transform:none}
+  .row .k{color:var(--muted)}.row .v{font-weight:600;color:#fff}
+  .note{padding:8px 14px;font-size:11.5px;color:var(--muted);opacity:0;transition:.25s}
+  .note.on{opacity:1}
+  code{font-family:ui-monospace,Menlo,monospace;font-size:11.5px;background:#0b131e;
+    border:1px solid var(--line);border-radius:4px;padding:1px 5px;word-break:break-all}
+</style>
+</head>
+<body>
+<div class="hdr">
+  <div class="ava">✈</div>
+  <div class="hinfo">
+    <div class="hname">PREDICTOR 4.0 <span class="ver">bot</span></div>
+    <div class="hsub" id="hsub"><span class="live"></span>AI prediction engine</div>
+  </div>
+  <div class="badge">LIVE</div>
+</div>
+<div class="chat" id="chat"></div>
+<div class="bar" id="bar"><button class="startpill" id="startBtn">▶ Start</button></div>
+
+<script>
+const tg = window.Telegram?.WebApp;
+if (tg) {
+  tg.ready(); tg.expand();
+  tg.setHeaderColor('#070b12'); tg.setBackgroundColor('#070b12');
+  tg.disableVerticalSwipes?.();
+}
+
+const BOT_USER = "predictionreal_bot";
+
+const GAMES=[{k:'aviator',e:'✈️',n:'Aviator'},{k:'luckyjet',e:'🚀',n:'Lucky Jet'},
+{k:'chicken',e:'🐔',n:'Chicken Road'},{k:'mines',e:'💣',n:'Mines'},
+{k:'penalty',e:'⚽',n:'Penalty Shootout'},{k:'spaceman',e:'👨‍🚀',n:'Spaceman'},
+{k:'jetx',e:'🛸',n:'JetX'},{k:'queen',e:'👑',n:'Rocket Queen'},
+{k:'balloon',e:'🎈',n:'Balloon'},{k:'double',e:'🎲',n:'Double'}];
+const SERVERS=[{k:'1win',n:'1WIN'},{k:'1xbet',n:'1XBET'},{k:'betwinner',n:'Betwinner'},
+{k:'mostbet',n:'Mostbet'},{k:'melbet',n:'Melbet'},{k:'parimatch',n:'Parimatch'},
+{k:'22bet',n:'22BET'},{k:'pinup',n:'Pin-up'},{k:'bcgame',n:'BC.Game'},{k:'stake',n:'Stake'}];
+const RANGE={aviator:[1.2,8],luckyjet:[1.1,12],chicken:[1,5],mines:[1.5,20],
+penalty:[1.2,6],spaceman:[1.1,10],jetx:[1.1,15],queen:[1.2,25],balloon:[1.1,9],double:[2,14]};
+
+const chat=document.getElementById('chat'),bar=document.getElementById('bar'),hsub=document.getElementById('hsub');
+let uid=localStorage.getItem('pr_uid')||(tg?.initDataUnsafe?.user?.id);
+if(!uid){uid=Math.floor(100000+Math.random()*899999);localStorage.setItem('pr_uid',uid);}
+let busy=false;
+const stats=JSON.parse(localStorage.getItem('pr_stats')||'{"p":0,"r":0}');
+const saveStats=()=>localStorage.setItem('pr_stats',JSON.stringify(stats));
+const haptic=t=>tg?.HapticFeedback?.impactOccurred(t||'light');
+
+function botMsg(t){const m=document.createElement('div');m.className='msg';const b=document.createElement('div');
+  b.className='bubble';b.innerHTML=t;m.appendChild(b);chat.appendChild(m);chat.scrollTop=chat.scrollHeight;return m;}
+function userMsg(t){const m=document.createElement('div');m.className='msg out';const b=document.createElement('div');
+  b.className='bubble';b.textContent=t;m.appendChild(b);chat.appendChild(m);chat.scrollTop=chat.scrollHeight;}
+function keyboard(items,cols){
+  const kb=document.createElement('div');kb.className='kb'+(cols===2?' g2':cols===3?' g3':'');
+  items.forEach(it=>{const b=document.createElement('button');b.textContent=it.label;
+    if(it.wide)b.className='wide';if(it.prim)b.classList.add('prim');
+    b.onclick=()=>{if(busy)return;haptic();kb.remove();userMsg(it.label);it.fn();};
+    kb.appendChild(b);});
+  chat.appendChild(kb);chat.scrollTop=chat.scrollHeight;
+}
+function typing(ms){return new Promise(res=>{hsub.innerHTML='<span class="live"></span>typing…';
+  const m=document.createElement('div');m.className='msg';const t=document.createElement('div');t.className='bubble';
+  t.innerHTML='<div class="typing"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div>';
+  m.appendChild(t);chat.appendChild(m);chat.scrollTop=chat.scrollHeight;
+  setTimeout(()=>{m.remove();hsub.innerHTML='<span class="live"></span>AI prediction engine';res();},ms);});}
+
+function startFlow(){
+  userMsg('/start');
+  botMsg('👋 <b>Welcome</b>\n\n🧩 <b>PREDICTOR 4.0</b> — AI based prediction engine\n─────────────\n✅ 10+ games supported\n✅ 10+ betting servers\n✅ 78–97% accuracy\n─────────────\n👇 Neeche button dabaein aur app launch karein.');
+  mainMenu();
+}
+function mainMenu(){
+  keyboard([{label:'🚀 Launch Predictor App',prim:true,wide:true,fn:appMenu},
+    {label:'📊 My stats',fn:statsFlow},{label:'👥 Refer & earn',fn:refFlow},
+    {label:'📖 How to use',fn:howFlow},
+    {label:'🛠 Support',fn:()=>{botMsg('🛠 <b>Support</b>\n\nKoi masla ho to admin se rabta karein.');mainMenu();}}]);
+}
+function appMenu(){
+  botMsg('🎮 <b>Select game</b>\n\nKaunsa game predict karna hai?');
+  const items=GAMES.map(g=>({label:`${g.e} ${g.n}`,fn:()=>serverMenu(g)}));
+  items.push({label:'🏠 Main menu',wide:true,fn:mainMenu});
+  keyboard(items,2);
+}
+function serverMenu(g){
+  botMsg(`${g.e} <b>${g.n}</b>\n\n🌐 Ab apna server select karein:`);
+  const items=SERVERS.map(s=>({label:s.n,fn:()=>predict(g,s)}));
+  items.push({label:'🔙 Back',wide:true,fn:appMenu});
+  keyboard(items,3);
+}
+async function predict(g,s){
+  busy=true;
+  await typing(900+Math.random()*700);
+  const r=RANGE[g.k]||[1.2,8];
+  const target=+(r[0]+Math.random()*(r[1]-r[0])).toFixed(2);
+  const safe=+Math.max(1.05,target*(0.45+Math.random()*0.3)).toFixed(2);
+  const conf=78+Math.floor(Math.random()*20);
+  const rnd=1000+Math.floor(Math.random()*9000);
+  stats.p++;saveStats();
+
+  const m=document.createElement('div');m.className='msg';
+  const c=document.createElement('div');c.className='card';
+  c.innerHTML=`<div class="card-top"><span id="ct">◉ ANALYSING</span><span>${g.e} ${g.n}</span></div>
+  <div class="track"><div class="trail" id="tr"></div><div class="plane" id="pl">✈️</div><div class="mult" id="mu">1.00x</div></div>
+  <div class="row" data-r><span class="k">Server</span><span class="v">${s.n}</span></div>
+  <div class="row" data-r><span class="k">Round</span><span class="v">#${rnd}</span></div>
+  <div class="row" data-r><span class="k">Safe cashout</span><span class="v">${safe}x</span></div>
+  <div class="row" data-r><span class="k">Confidence</span><span class="v">${conf}%</span></div>
+  <div class="row" data-r><span class="k">Valid</span><span class="v">next 3 rounds</span></div>
+  <div class="note" data-r>💡 Safe cashout par nikal jayein.</div>`;
+  m.appendChild(c);chat.appendChild(m);chat.scrollTop=chat.scrollHeight;
+
+  const mu=c.querySelector('#mu'),pl=c.querySelector('#pl'),tr=c.querySelector('#tr'),ct=c.querySelector('#ct');
+  const W=c.querySelector('.track').clientWidth-24;
+  const t0=performance.now();
+  await new Promise(done=>{(function frame(now){
+    const p=Math.min(1,(now-t0)/1150),ease=1-Math.pow(1-p,2.2),val=1+(target-1)*ease;
+    mu.textContent=val.toFixed(2)+'x';
+    pl.style.transform=`translate(${p*W}px,${-p*44}px) rotate(-12deg)`;
+    tr.style.width=(p*W)+'px';
+    if(p<1)requestAnimationFrame(frame);else done();})(performance.now());});
+
+  ct.textContent='🎯 PREDICTION READY';ct.parentElement.classList.add('on');
+  mu.textContent=target.toFixed(2)+'x';
+  c.querySelectorAll('[data-r]').forEach((el,i)=>setTimeout(()=>el.classList.add('on'),i*70));
+  haptic('medium');busy=false;
+
+  keyboard([{label:'🔄 New prediction',prim:true,fn:()=>predict(g,s)},
+    {label:'🔁 Change game',fn:appMenu},{label:'🏠 Main menu',wide:true,fn:mainMenu}],2);
+}
+function statsFlow(){
+  botMsg(`📊 <b>Your stats</b>\n─────────────\n🎯 Total predictions: <b>${stats.p}</b>\n👥 Total referrals: <b>${stats.r}</b>\n🆔 Your ID: <code>${uid}</code>`);
+  mainMenu();
+}
+function refFlow(){
+  stats.r++;saveStats();
+  const link=`https://t.me/${BOT_USER}?start=ref_${uid}`;
+  botMsg(`👥 <b>Refer & earn</b>\n─────────────\nDoston ko invite karein aur bonus kamayein.\n\n🔗 Aapka link:\n<code>${link}</code>\n\n📈 Invites: <b>${stats.r}</b>`);
+  keyboard([{label:'📤 Share on Telegram',prim:true,wide:true,
+    fn:()=>tg?.openTelegramLink(`https://t.me/share/url?url=${encodeURIComponent(link)}&text=${encodeURIComponent('Predictor 4.0 — free AI predictions')}`)},
+    {label:'🏠 Main menu',wide:true,fn:mainMenu}]);
+}
+function howFlow(){
+  botMsg('📖 <b>How to use</b>\n─────────────\n1️⃣ Launch Predictor App dabaein\n2️⃣ Game select karein\n3️⃣ Apna server select karein\n4️⃣ Prediction receive karein\n5️⃣ Safe cashout par nikal jayein\n\n⚠️ Ye predictions AI based hain, 100% guarantee nahi.');
+  mainMenu();
+}
+
+document.getElementById('startBtn').onclick=()=>{
+  haptic();bar.innerHTML='<div class="mockinput"><span>Message</span>➤</div>';startFlow();
+};
+</script>
+</body>
+</html>
